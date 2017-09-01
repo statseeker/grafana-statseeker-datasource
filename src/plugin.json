@@ -1,0 +1,36 @@
+{
+   "name": "Statseeker",
+   "id": "statseeker-datasource",
+   "type": "datasource",
+   "metrics": true,
+   "annotations": false,
+
+   "info": {
+      "description": "Statseeker datasource",
+      "author": {
+         "name": "Statseeker Pty Ltd",
+         "url": "http://statseeker.com"
+      },
+      "logos": {
+         "small": "img/statseeker_logo.png",
+         "large": "img/statseeker_logo.png"
+      },
+      "links": [
+         {
+            "name": "GitHub",
+            "url": "https://github.com/statseeker/grafana-statseeker-datasource"
+         },
+         {
+            "name": "MIT License",
+            "url": "https://github.com/statseeker/grafana-statseeker-datasource/blob/master/LICENSE"
+         }
+      ],
+      "version": "1.0.0",
+      "updated": "2017-06-08"
+   },
+
+   "dependencies": {
+      "grafanaVersion": "4.3.x",
+      "plugins": []
+   }
+}

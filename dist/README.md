@@ -4,7 +4,7 @@
  * Restart grafana-server
 
 ```
-git clone https://github.com/statseeker/grafana-statseeker-datasource.git
+git clone git@github.com:statseeker/grafana-datasource.git
 npm install
 grunt
 sudo service grafana-server restart

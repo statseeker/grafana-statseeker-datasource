@@ -1,0 +1,223 @@
+<query-editor-row query-ctrl="ctrl" can-collapse="true" has-text-edit-mode="true">
+   <div ng-if="ctrl.target.rawMode">
+      <div class="gf-form">
+         <textarea
+            rows="6"
+            class="gf-form-input"
+            ng-model="ctrl.target.rawQuery"
+            spellcheck="false"
+            placeholder="Raw Query">
+         </textarea>
+      </div>
+   </div>
+
+   <div ng-if=" ! ctrl.target.rawMode">
+      <div class="gf-form-inline">
+         <div class="gf-form gf-form--grow">
+            <label class="gf-form-label query-keyword width-7">Object</label>
+            <metric-segment-model
+               property="ctrl.target.object"
+               custom="false"
+               get-options="ctrl.loadObjectList()"
+               on-change="ctrl.objectChanged()">
+            </metric-segment-model>
+            <input
+               ng-show="ctrl.target.object !== 'Select object'"
+               type="text"
+               class="gf-form-input"
+               ng-model="ctrl.target.object_opts"
+               spellcheck="false"
+               placeholder="Object options (JSON)" />
+         </div>
+      </div>
+
+      <div ng-if="ctrl.target.object && ctrl.target.object !== 'Select object'">
+         <div class="gf-form-inline" ng-repeat="field in ctrl.target.fields">
+            <div class="gf-form">
+               <label class="gf-form-label query-keyword width-7">
+                  <span ng-show="$first">Fields</span>&nbsp;
+               </label>
+            </div>
+            <div class="gf-form gf-form--grow" ng-class="{'gf-form-disabled': field.hide}">
+               <metric-segment-model
+                  property="field.name"
+                  custom="false"
+                  get-options="ctrl.getFieldList()">
+               </metric-segment-model>
+               <metric-segment-model
+                  ng-if="ctrl.fieldHasFormats(field.name)"
+                  property="field.format"
+                  custom="false"
+                  get-options="ctrl.getFormatList(field.name)">
+               </metric-segment-model>
+               <input
+                  type="text"
+                  ng-if=" ! ctrl.fieldHasFormats(field.name) || field.format !== 'Select format'"
+                  class="gf-form-input width-10"
+                  ng-model="field.alias"
+                  spellcheck="false"
+                  placeholder="Alias" />
+               <input
+                  type="text"
+                  ng-if=" ! ctrl.fieldHasFormats(field.name) || field.format !== 'Select format'"
+                  class="gf-form-input"
+                  ng-model="field.opts"
+                  spellcheck="false"
+                  placeholder="Field Options (JSON)" />
+               <label class="gf-form-label">
+                  <a class="pointer" ng-click="field.hide = ! field.hide">
+                     <i class="fa fa-eye"></i>
+                  </a>
+               </label>
+               <label class="gf-form-label">
+                  <a class="pointer" ng-click="ctrl.removeField($index)">
+                     <i class="fa fa-trash"></i>
+                  </a>
+               </label>
+            </div>
+         </div>
+
+         <div class="gf-form-inline">
+            <div class="gf-form">
+               <label class="gf-form-label query-keyword width-7">
+                  <span ng-show="ctrl.target.fields.length === 0">Fields</span>&nbsp;
+               </label>
+               <metric-segment-model
+                  ng-if="ctrl.fieldSelection === '+'"
+                  property="ctrl.fieldSelection"
+                  custom="false"
+                  get-options="ctrl.getFieldList()"
+                  on-change="ctrl.addField()">
+               </metric-segment-model>
+            </div>
+         </div>
+
+         <div class="gf-form-inline" ng-repeat="filter in ctrl.target.filters">
+            <div class="gf-form gf-form--grow">
+               <label class="gf-form-label query-keyword width-7">
+                  <span ng-show="$first">Filters</span>&nbsp;
+               </label>
+               <metric-segment-model
+                  property="filter.field"
+                  custom="false"
+                  get-options="ctrl.getSelectedFields()"
+                  on-change="ctrl.filterUpdated($index)">
+               </metric-segment-model>
+               <metric-segment-model
+                  ng-if="ctrl.aliasHasFormats(filter.field)"
+                  property="filter.format"
+                  custom="false"
+                  get-options="ctrl.getAliasFormats(filter.field)">
+               </metric-segment-model>
+               <input
+                  type="text"
+                  ng-if=" ! ctrl.aliasHasFormats(filter.field) || filter.format !== 'Select format'"
+                  class="gf-form-input width-10"
+                  ng-model="filter.query"
+                  spellcheck="false"
+                  placeholder="Query" />
+               <label class="gf-form-label">
+                  <a class="pointer" ng-click="ctrl.removeFilter($index)">
+                     <i class="fa fa-trash"></i>
+                  </a>
+               </label>
+            </div>
+         </div>
+
+         <div class="gf-form-inline">
+            <div class="gf-form">
+               <label class="gf-form-label query-keyword width-7">
+                  <span ng-show="ctrl.target.filters.length === 0">Filters</span>&nbsp;
+               </label>
+               <metric-segment-model
+                  ng-if="ctrl.filterSelection === '+'"
+                  property="ctrl.filterSelection"
+                  custom="false"
+                  get-options="ctrl.getSelectedFields()"
+                  on-change="ctrl.addFilter()">
+               </metric-segment-model>
+            </div>
+         </div>
+
+         <div class="gf-form-inline" ng-repeat="sort in ctrl.target.sortby">
+            <div class="gf-form gf-form--grow">
+               <label class="gf-form-label query-keyword width-7">
+                  <span ng-show="$first">Sort By</span>&nbsp;
+               </label>
+               <metric-segment-model
+                  property="sort.field"
+                  custom="false"
+                  get-options="ctrl.getSelectedFields()">
+               </metric-segment-model>
+               <metric-segment-model
+                  ng-if="ctrl.aliasHasFormats(sort.field)"
+                  property="sort.format"
+                  custom="false"
+                  get-options="ctrl.getAliasFormats(sort.field)">
+               </metric-segment-model>
+               <metric-segment-model
+                  ng-if=" ! ctrl.aliasHasFormats(sort.field) || sort.format !== 'Select format'"
+                  property="sort.order"
+                  custom="false"
+                  options="ctrl.sortDirections">
+               </metric-segment-model>
+               <label class="gf-form-label">
+                  <a class="pointer" ng-click="ctrl.removeSort($index)">
+                     <i class="fa fa-trash"></i>
+                  </a>
+               </label>
+            </div>
+         </div>
+
+         <div class="gf-form-inline">
+            <div class="gf-form">
+               <label class="gf-form-label query-keyword width-7">
+                  <span ng-show="ctrl.target.sortby.length === 0">Sort By</span>&nbsp;
+               </label>
+               <metric-segment-model
+                  ng-if="ctrl.sortSelection === '+'"
+                  property="ctrl.sortSelection"
+                  custom="false"
+                  get-options="ctrl.getSelectedFields()"
+                  on-change="ctrl.addSort()">
+               </metric-segment-model>
+            </div>
+         </div>
+
+         <div class="gf-form-inline">
+            <div class="gf-form gf-form--grow">
+               <label class="gf-form-label query-keyword width-7">Adv. Filter</label>
+               <input
+                  type="text"
+                  class="gf-form-input"
+                  ng-model="ctrl.target.adv_filter"
+                  spellcheck="false"
+                  placeholder="Advanced filter" />
+            </div>
+         </div>
+
+         <div class="gf-form-inline">
+            <div class="gf-form">
+               <label class="gf-form-label query-keyword width-7">Limit</label>
+               <input
+                  type="text"
+                  class="gf-form-input width-5"
+                  ng-model="ctrl.target.limit"
+                  spellcheck="false" />
+               <label class="gf-form-label query-keyword width-5">Offset</label>
+               <input
+                  type="text"
+                  class="gf-form-input width-5"
+                  ng-model="ctrl.target.offset"
+                  spellcheck="false" />
+               <label class="gf-form-label query-keyword width-5">Output</label>
+               <metric-segment-model
+                  property="ctrl.target.output"
+                  custom="false"
+                  options="ctrl.outputModes">
+               </metric-segment-model>
+            </div>
+         </div>
+      </div>
+   </div>
+</query-editor-row>
