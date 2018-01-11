@@ -48,15 +48,19 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       });
 
       /* Target properties */
-      this.target.object      = this.target.object      || 'Select object';
-      this.target.object_opts = this.target.object_opts || null;
-      this.target.fields      = this.target.fields      || [];
-      this.target.filters     = this.target.filters     || [];
-      this.target.adv_filter  = this.target.adv_filter  || null;
-      this.target.sortby      = this.target.sortby      || [];
-      this.target.limit       = this.target.limit       || 10;
-      this.target.offset      = this.target.offset      || 0;
-      this.target.output      = this.target.output      || 'timeseries';
+      this.setTargetProperties(this.target);
+   }
+
+   setTargetProperties(from) {
+      this.target.object      = from.object      || 'Select object';
+      this.target.object_opts = from.object_opts || null;
+      this.target.fields      = from.fields      || [];
+      this.target.filters     = from.filters     || [];
+      this.target.adv_filter  = from.adv_filter  || null;
+      this.target.sortby      = from.sortby      || [];
+      this.target.limit       = from.limit       || 10;
+      this.target.offset      = from.offset      || 0;
+      this.target.output      = from.output      || 'timeseries';
    }
 
    loadObjectList() {
@@ -300,17 +304,12 @@ export class StatseekerQueryCtrl extends QueryCtrl {
          if (_.isError(tmp)) {
             throw {message: 'JSON decode failed'};
          }
-         this.target = tmp;
+         this.setTargetProperties(tmp);
          this.target.rawMode = false;
+         this.target.rawQuery = null;
       }
       else {
          /* Encode the raw query */
-         if (typeof this.target.rawQuery !== 'undefined') {
-            delete this.target.rawQuery;
-         }
-         if (typeof this.target.rawMode !== 'undefined') {
-            delete this.target.rawMode;
-         }
          this.target.rawQuery = angular.toJson(this.target);
          this.target.rawMode = true;
       }

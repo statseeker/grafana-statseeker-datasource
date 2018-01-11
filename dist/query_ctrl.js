@@ -105,19 +105,24 @@ System.register(['app/plugins/sdk', 'lodash', 'angular'], function (_export, _co
                });
 
                /* Target properties */
-               _this.target.object = _this.target.object || 'Select object';
-               _this.target.object_opts = _this.target.object_opts || null;
-               _this.target.fields = _this.target.fields || [];
-               _this.target.filters = _this.target.filters || [];
-               _this.target.adv_filter = _this.target.adv_filter || null;
-               _this.target.sortby = _this.target.sortby || [];
-               _this.target.limit = _this.target.limit || 10;
-               _this.target.offset = _this.target.offset || 0;
-               _this.target.output = _this.target.output || 'timeseries';
+               _this.setTargetProperties(_this.target);
                return _this;
             }
 
             _createClass(StatseekerQueryCtrl, [{
+               key: 'setTargetProperties',
+               value: function setTargetProperties(from) {
+                  this.target.object = from.object || 'Select object';
+                  this.target.object_opts = from.object_opts || null;
+                  this.target.fields = from.fields || [];
+                  this.target.filters = from.filters || [];
+                  this.target.adv_filter = from.adv_filter || null;
+                  this.target.sortby = from.sortby || [];
+                  this.target.limit = from.limit || 10;
+                  this.target.offset = from.offset || 0;
+                  this.target.output = from.output || 'timeseries';
+               }
+            }, {
                key: 'loadObjectList',
                value: function loadObjectList() {
                   var _this2 = this;
@@ -378,16 +383,11 @@ System.register(['app/plugins/sdk', 'lodash', 'angular'], function (_export, _co
                      if (_.isError(tmp)) {
                         throw { message: 'JSON decode failed' };
                      }
-                     this.target = tmp;
+                     this.setTargetProperties(tmp);
                      this.target.rawMode = false;
+                     this.target.rawQuery = null;
                   } else {
                      /* Encode the raw query */
-                     if (typeof this.target.rawQuery !== 'undefined') {
-                        delete this.target.rawQuery;
-                     }
-                     if (typeof this.target.rawMode !== 'undefined') {
-                        delete this.target.rawMode;
-                     }
                      this.target.rawQuery = angular.toJson(this.target);
                      this.target.rawMode = true;
                   }
