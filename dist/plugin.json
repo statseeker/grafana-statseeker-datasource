@@ -4,7 +4,6 @@
    "type": "datasource",
    "metrics": true,
    "annotations": false,
-
    "info": {
       "description": "Statseeker datasource",
       "author": {
@@ -25,10 +24,10 @@
             "url": "https://github.com/statseeker/grafana-statseeker-datasource/blob/master/LICENSE"
          }
       ],
-      "version": "1.0.0",
-      "updated": "2017-06-08"
+      "keywords": [ "statseeker", "tsdb" ],
+      "version": "1.0.1",
+      "updated": "2018-01-11"
    },
-
    "dependencies": {
       "grafanaVersion": "4.3.x",
       "plugins": []
