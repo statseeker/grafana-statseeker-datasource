@@ -211,9 +211,6 @@ export class StatseekerDatasource {
          if (target.hide) {
             continue;
          }
-         if (isNaN(target.limit) || isNaN(target.offset)) {
-            throw {message: 'Limit and Offset must be integers'};
-         }
 
          obj = {
             type: this.templateSrv.replace(target.object, options.scopedVars),
@@ -222,6 +219,10 @@ export class StatseekerDatasource {
             grafana_output: target.output,
             fields: {}
          };
+
+         if (isNaN(obj.limit) || isNaN(obj.offset)) {
+            throw {message: 'Limit and Offset must be integers'};
+         }
 
          /* Add any object options */
          if (target.object_opts) {

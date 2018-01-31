@@ -25,8 +25,8 @@
          }
       ],
       "keywords": [ "statseeker", "tsdb" ],
-      "version": "1.0.1",
-      "updated": "2018-01-11"
+      "version": "1.0.2",
+      "updated": "2018-01-31"
    },
    "dependencies": {
       "grafanaVersion": "4.3.x",
