@@ -44,11 +44,22 @@
                   custom="false"
                   get-options="ctrl.getFieldList()">
                </metric-segment-model>
+
+               <label ng-if="ctrl.fieldHasFormats(field.name)" class="gf-form-label query-keyword">Format</label>
                <metric-segment-model
                   ng-if="ctrl.fieldHasFormats(field.name)"
                   property="field.format"
                   custom="false"
                   get-options="ctrl.getFormatList(field.name)">
+               </metric-segment-model>
+
+               <label ng-if="ctrl.target.groupby.length > 0" class="gf-form-label query-keyword">Aggregation Type</label>
+               <metric-segment-model
+                  ng-if="ctrl.target.groupby.length > 0"
+                  property="field.aggregation_format"
+                  class="no-wrap"
+                  custom="false"
+                  get-options="ctrl.getAggregationFormatList()">
                </metric-segment-model>
                <input
                   type="text"
@@ -180,6 +191,53 @@
                   custom="false"
                   get-options="ctrl.getSelectedFields()"
                   on-change="ctrl.addSort()">
+               </metric-segment-model>
+            </div>
+         </div>
+
+         <div class="gf-form-inline" ng-repeat="aggr in ctrl.target.groupby">
+            <div class="gf-form gf-form--grow">
+               <label class="gf-form-label query-keyword width-7">
+                  <span ng-show="$first">Group By</span>&nbsp;
+               </label>
+               <metric-segment-model
+                  property="aggr.field"
+                  custom="false"
+                  get-options="ctrl.getGroupbyOptions()">
+               </metric-segment-model>
+               <metric-segment-model
+                  ng-if="ctrl.aliasHasFormats(aggr.field)"
+                  property="aggr.format"
+                  custom="false"
+                  get-options="ctrl.getAliasFormats(aggr.field)">
+               </metric-segment-model>
+               <input
+                  type="text"
+                  ng-if=" aggr.field === '~Custom~'"
+                  class="gf-form-input"
+                  ng-model="aggr.custom"
+                  spellcheck="false"
+                  placeholder="Custom grouping Formula. eg. {cdt_device} || '.' || {name}" />
+               </metric-segment-model>
+               <label class="gf-form-label">
+                  <a class="pointer" ng-click="ctrl.removeAggr($index)">
+                     <i class="fa fa-trash"></i>
+                  </a>
+               </label>
+            </div>
+         </div>
+
+         <div class="gf-form-inline">
+            <div class="gf-form">
+               <label class="gf-form-label query-keyword width-7">
+                  <span ng-show="ctrl.target.groupby.length === 0">Group By</span>&nbsp;
+               </label>
+               <metric-segment-model
+                  ng-if="ctrl.aggrSelection === '+'"
+                  property="ctrl.aggrSelection"
+                  custom="false"
+                  get-options="ctrl.getGroupbyOptions()"
+                  on-change="ctrl.addAggr()">
                </metric-segment-model>
             </div>
          </div>

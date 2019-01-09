@@ -21,6 +21,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       this.fieldSelection = '+';
       this.filterSelection = '+';
       this.sortSelection = '+';
+      this.aggrSelection = '+';
       this.objectList = [];
       this.fieldMap = {};
       this.deviceFieldMap = {};
@@ -58,6 +59,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       this.target.filters     = from.filters     || [];
       this.target.adv_filter  = from.adv_filter  || null;
       this.target.sortby      = from.sortby      || [];
+      this.target.groupby     = from.groupby     || [];
       this.target.limit       = from.limit       || 10;
       this.target.offset      = from.offset      || 0;
       this.target.output      = from.output      || 'timeseries';
@@ -82,9 +84,9 @@ export class StatseekerQueryCtrl extends QueryCtrl {
          }
 
          /* Add the template variables */
-         _.forOwn(this.datasource.templateSrv._index, (val, key) => {
-            output.push({text: '$' + key, value: '$' + key});
-         });
+         for (const variable of this.datasource.templateSrv.variables) {
+            output.push({text: '$' + variable.name, value: '$' + variable.name});
+         }
 
          return output;
       },
@@ -121,15 +123,15 @@ export class StatseekerQueryCtrl extends QueryCtrl {
                formats.push({text: fmt, value: fmt});
             });
             val.formats = _.sortBy(formats, [v => {
-               v.text.toLowerCase();
+               return v.text.toLowerCase();
             }]);
          });
 
          /* Add the template variables */
-         _.forOwn(this.datasource.templateSrv._index, (val, key) => {
-            fieldMap['$' + key] = {name: '$' + key};
-            fieldMap['$' + key].formats = [];
-         });
+         for (const variable of this.datasource.templateSrv.variables) {
+            fieldMap['$' + variable.name] = {name: '$' + variable.name};
+            fieldMap['$' + variable.name].formats = [];
+         }
 
          return fieldMap;
       },
@@ -159,7 +161,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       });
 
       return Promise.resolve(_.sortBy(output, [val => {
-         val.text.toLowerCase();
+         return val.text.toLowerCase();
       }])).then(this.uiSegmentSrv.transformToSegments(false));
    }
 
@@ -170,13 +172,13 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       if (this.fieldMap[fld]) {
          output = _.cloneDeep(this.fieldMap[fld].formats);
          /* Add the template variables */
-         _.forOwn(this.datasource.templateSrv._index, (val, key) => {
-            output.push({text: '$' + key, value: '$' + key});
-         });
+         for (const variable of this.datasource.templateSrv.variables) {
+            output.push({text: '$' + variable.name, value: '$' + variable.name});
+         }
       }
 
       return Promise.resolve(_.sortBy(output, [val => {
-         val.text.toLowerCase();
+         return val.text.toLowerCase();
       }])).then(this.uiSegmentSrv.transformToSegments(false));
    }
 
@@ -196,8 +198,27 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       }
 
       return Promise.resolve(_.sortBy(output, [val => {
-         val.text.toLowerCase();
+         return val.text.toLowerCase();
       }])).then(this.uiSegmentSrv.transformToSegments(false));
+   }
+
+   getGroupbyOptions() {
+      var i, alias;
+      var output = [];
+
+      for (i = 0; i < this.target.fields.length; i++) {
+         alias = this.target.fields[i].alias ? this.target.fields[i].alias : this.target.fields[i].name;
+         output.push({text: alias, value: alias});
+      }
+
+      output = _.sortBy(output, [v => {
+         return v.text.toLowerCase();
+      }]);
+      output.unshift({text: '~All~', value: '~All~'});
+      output.push({text: '~Custom~', value: '~Custom~'});
+
+
+      return Promise.resolve(output).then(this.uiSegmentSrv.transformToSegments(false));
    }
 
    getAliasFormats(alias) {
@@ -211,6 +232,29 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       }
 
       return [];
+   }
+
+   getAggregationFormatList() {
+      var output = [
+         {text: 'first',     value: 'first'},
+         {text: 'last',      value: 'last'},
+         {text: 'avg',       value: 'avg'},
+         {text: 'count',     value: 'count'},
+         {text: 'count_all', value: 'count_all'},
+         {text: 'cat',       value: 'cat'},
+         {text: 'list',      value: 'list'},
+         {text: 'min',       value: 'min'},
+         {text: 'max',       value: 'max'},
+         {text: 'sum',       value: 'sum'},
+         {text: 'total',     value: 'total'},
+         {text: 'median',    value: 'median'},
+         {text: '95th',      value: '95th'},
+         {text: 'stddev',    value: 'stddev'}
+      ];
+
+      return Promise.resolve(_.sortBy(output, [val => {
+         return val.text.toLowerCase();
+      }])).then(this.uiSegmentSrv.transformToSegments(false));
    }
 
    aliasHasFormats(alias) {
@@ -232,6 +276,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       this.target.fields = [];
       this.target.filters = [];
       this.target.sortby = [];
+      this.target.groupby = [];
       this.target.object_opts = null;
       this.selectedObject = null;
 
@@ -245,7 +290,12 @@ export class StatseekerQueryCtrl extends QueryCtrl {
    }
 
    addField() {
-      var row = {name: this.fieldSelection, format: 'Select format', hide: false};
+      var row = {
+         name: this.fieldSelection,
+         format: 'Select format',
+         aggregation_format: 'Select aggregation type',
+         hide: false
+      };
 
       this.target.fields.push(row);
       this.fieldSelection = '+';
@@ -263,6 +313,13 @@ export class StatseekerQueryCtrl extends QueryCtrl {
 
       this.target.sortby.push(row);
       this.sortSelection = '+';
+   }
+
+   addAggr() {
+      var row = {field: this.aggrSelection, format: 'Select format', custom: ''};
+
+      this.target.groupby.push(row);
+      this.aggrSelection = '+';
    }
 
    removeField(index) {
@@ -289,6 +346,10 @@ export class StatseekerQueryCtrl extends QueryCtrl {
 
    removeSort(index) {
       this.target.sortby.splice(index, 1);
+   }
+
+   removeAggr(index) {
+      this.target.groupby.splice(index, 1);
    }
 
    getCollapsedText() {
