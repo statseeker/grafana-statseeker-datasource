@@ -44,7 +44,7 @@
                   get-options="ctrl.loadGroupList()">
                </metric-segment-model>
                <label class="gf-form-label">
-                  <a class="pointer" ng-click="ctrl.removeGroup($index)">
+                  <a class="pointer" ng-click="ctrl.target.groups.splice($index, 1)">
                      <i class="fa fa-trash"></i>
                   </a>
                </label>
@@ -87,9 +87,11 @@
                   get-options="ctrl.getFormatList(field.name)">
                </metric-segment-model>
 
-               <label ng-if="ctrl.target.groupby.length > 0" class="gf-form-label query-keyword">Aggregation Type</label>
+               <label
+                  ng-if="ctrl.target.groupby.length > 0 || (ctrl.target.output === 'ts_table' && field.name !== ctrl.target.pivot_field)"
+                  class="gf-form-label query-keyword">Aggregation Type</label>
                <metric-segment-model
-                  ng-if="ctrl.target.groupby.length > 0"
+                  ng-if="ctrl.target.groupby.length > 0 || (ctrl.target.output === 'ts_table' && field.name !== ctrl.target.pivot_field)"
                   property="field.aggregation_format"
                   class="no-wrap"
                   custom="false"
@@ -111,12 +113,12 @@
                   placeholder="Field Options (JSON)" />
                <label class="gf-form-label" ng-hide="$first">
                   <a class="pointer">
-                     <i class="fa fa-arrow-up" ng-click="ctrl.move(ctrl.target.fields, $index, $index - 1)"></i>
+                     <i class="fa fa-arrow-up" ng-click="ctrl.moveRow(ctrl.target.fields, $index, $index - 1)"></i>
                   </a>
                </label>
                <label class="gf-form-label" ng-style="{'visibility': $last ? 'hidden' : 'visible'}" ng-hide="ctrl.target.fields.length === 1">
                   <a class="pointer">
-                     <i class="fa fa-arrow-down" ng-click="ctrl.move(ctrl.target.fields, $index, $index + 1)"></i>
+                     <i class="fa fa-arrow-down" ng-click="ctrl.moveRow(ctrl.target.fields, $index, $index + 1)"></i>
                   </a>
                </label>
                <label class="gf-form-label">
@@ -172,7 +174,7 @@
                   spellcheck="false"
                   placeholder="Query" />
                <label class="gf-form-label">
-                  <a class="pointer" ng-click="ctrl.removeFilter($index)">
+                  <a class="pointer" ng-click="ctrl.target.filters.splice($index, 1)">
                      <i class="fa fa-trash"></i>
                   </a>
                </label>
@@ -218,16 +220,16 @@
                </metric-segment-model>
                <label class="gf-form-label" ng-hide="$first">
                   <a class="pointer">
-                     <i class="fa fa-arrow-up" ng-click="ctrl.move(ctrl.target.sortby, $index, $index - 1)"></i>
+                     <i class="fa fa-arrow-up" ng-click="ctrl.moveRow(ctrl.target.sortby, $index, $index - 1)"></i>
                   </a>
                </label>
                <label class="gf-form-label" ng-style="{'visibility': $last ? 'hidden' : 'visible'}" ng-hide="ctrl.target.sortby.length === 1">
                   <a class="pointer">
-                     <i class="fa fa-arrow-down" ng-click="ctrl.move(ctrl.target.sortby, $index, $index + 1)"></i>
+                     <i class="fa fa-arrow-down" ng-click="ctrl.moveRow(ctrl.target.sortby, $index, $index + 1)"></i>
                   </a>
                </label>
                <label class="gf-form-label">
-                  <a class="pointer" ng-click="ctrl.removeSort($index)">
+                  <a class="pointer" ng-click="ctrl.target.sortby.splice($index, 1)">
                      <i class="fa fa-trash"></i>
                   </a>
                </label>
@@ -249,7 +251,7 @@
             </div>
          </div>
 
-         <div class="gf-form-inline" ng-repeat="aggr in ctrl.target.groupby">
+         <div ng-show="ctrl.target.output !== 'ts_table'" class="gf-form-inline" ng-repeat="aggr in ctrl.target.groupby">
             <div class="gf-form gf-form--grow">
                <label class="gf-form-label query-keyword width-7">
                   <span ng-show="$first">Group By</span>&nbsp;
@@ -275,23 +277,23 @@
                </metric-segment-model>
                <label class="gf-form-label" ng-hide="$first">
                   <a class="pointer">
-                     <i class="fa fa-arrow-up" ng-click="ctrl.move(ctrl.target.groupby, $index, $index - 1)"></i>
+                     <i class="fa fa-arrow-up" ng-click="ctrl.moveRow(ctrl.target.groupby, $index, $index - 1)"></i>
                   </a>
                </label>
                <label class="gf-form-label" ng-style="{'visibility': $last ? 'hidden' : 'visible'}" ng-hide="ctrl.target.groupby.length === 1">
                   <a class="pointer">
-                     <i class="fa fa-arrow-down" ng-click="ctrl.move(ctrl.target.groupby, $index, $index + 1)"></i>
+                     <i class="fa fa-arrow-down" ng-click="ctrl.moveRow(ctrl.target.groupby, $index, $index + 1)"></i>
                   </a>
                </label>
                <label class="gf-form-label">
-                  <a class="pointer" ng-click="ctrl.removeAggr($index)">
+                  <a class="pointer" ng-click="ctrl.target.groupby.splice($index, 1)">
                      <i class="fa fa-trash"></i>
                   </a>
                </label>
             </div>
          </div>
 
-         <div class="gf-form-inline">
+         <div ng-show="ctrl.target.output !== 'ts_table'" class="gf-form-inline">
             <div class="gf-form">
                <label class="gf-form-label query-keyword width-7">
                   <span ng-show="ctrl.target.groupby.length === 0">Group By</span>&nbsp;
@@ -338,9 +340,15 @@
                   custom="false"
                   options="ctrl.outputModes">
                </metric-segment-model>
-               <label ng-if="ctrl.target.output === 'timeseries'" class="gf-form-label query-keyword">Interval Override</label>
+               <label ng-if="ctrl.target.output === 'ts_table'" class="gf-form-label query-keyword">Time Field</label>
+               <metric-segment-model
+                  ng-if="ctrl.target.output === 'ts_table'"
+                  property="ctrl.target.pivot_field"
+                  custom="false"
+                  get-options="ctrl.getSelectedFields()">
+               </metric-segment-model>
+               <label class="gf-form-label query-keyword">Interval Override</label>
                <input
-                  ng-if="ctrl.target.output === 'timeseries'"
                   type="text"
                   class="gf-form-input width-10"
                   ng-model="ctrl.target.interval"

@@ -11,7 +11,8 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       this.uiSegmentSrv = uiSegmentSrv;
       this.outputModes = [
          {text: 'Timeseries', value: 'timeseries'},
-         {text: 'Table', value: 'table'}
+         {text: 'Table', value: 'table'},
+         {text: 'Table as Timeseries', value: 'ts_table'}
       ];
       this.sortDirections = [
          {text: 'Ascending', value: 'asc'},
@@ -66,6 +67,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       this.target.limit       = from.limit       || 10;
       this.target.offset      = from.offset      || 0;
       this.target.output      = from.output      || 'timeseries';
+      this.target.pivot_field = from.pivot_field || 'Select field';
       this.target.interval    = from.interval    || null;
    }
 
@@ -108,7 +110,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       });
    }
 
-   move(list, from, to) {
+   moveRow(list, from, to) {
       _.move(list, from, to);
    }
 
@@ -347,43 +349,47 @@ export class StatseekerQueryCtrl extends QueryCtrl {
    }
 
    addFilter() {
-      var row;
+      var i, alias;
 
-      if ( ! (this.filterSelection in this.fieldMap)) {
-         return;
+      for (i = 0; i < this.target.fields.length; i++) {
+         alias = this.target.fields[i].alias ? this.target.fields[i].alias : this.target.fields[i].name;
+         if (this.filterSelection === alias) {
+            this.target.filters.push({field: this.filterSelection, format: 'Select format'});
+            break;
+         }
       }
-      row = {field: this.filterSelection, format: 'Select format'};
-
-      this.target.filters.push(row);
       this.filterSelection = '+';
    }
 
    addSort() {
-      var row;
+      var i, alias;
 
-      if ( ! (this.sortSelection in this.fieldMap)) {
-         return;
+      for (i = 0; i < this.target.fields.length; i++) {
+         alias = this.target.fields[i].alias ? this.target.fields[i].alias : this.target.fields[i].name;
+         if (this.sortSelection === alias) {
+            this.target.sortby.push({field: this.sortSelection, format: 'Select format', order: 'asc'});
+            break;
+         }
       }
-      row = {field: this.sortSelection, format: 'Select format', order: 'asc'};
-
-      this.target.sortby.push(row);
       this.sortSelection = '+';
    }
 
    addAggr() {
-      var row;
+      var i, alias;
 
-      if ( ! (this.aggrSelection in this.fieldMap || this.aggrSelection === '~All~' || this.aggrSelection === '~Custom~')) {
-         return;
+      if (this.aggrSelection === '~All~' || this.aggrSelection === '~Custom~') {
+         this.target.groupby.push({field: this.aggrSelection, format: 'Select format', custom: ''});
       }
-      row = {field: this.aggrSelection, format: 'Select format', custom: ''};
-
-      this.target.groupby.push(row);
+      else {
+         for (i = 0; i < this.target.fields.length; i++) {
+            alias = this.target.fields[i].alias ? this.target.fields[i].alias : this.target.fields[i].name;
+            if (this.aggrSelection === alias) {
+               this.target.groupby.push({field: this.aggrSelection, format: 'Select format', custom: ''});
+               break;
+            }
+         }
+      }
       this.aggrSelection = '+';
-   }
-
-   removeGroup(index) {
-      this.target.groups.splice(index, 1);
    }
 
    removeField(index) {
@@ -404,20 +410,8 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       this.target.fields.splice(index, 1);
    }
 
-   removeFilter(index) {
-      this.target.filters.splice(index, 1);
-   }
-
-   removeSort(index) {
-      this.target.sortby.splice(index, 1);
-   }
-
-   removeAggr(index) {
-      this.target.groupby.splice(index, 1);
-   }
-
    getCollapsedText() {
-      return this.target.object + ' (' + _.map(this.target.fields, 'field').join(', ') + ') as ' + this.target.output;
+      return this.target.object + ' (' + _.map(this.target.fields, 'name').join(', ') + ') as ' + this.target.output;
    }
 
    toggleEditorMode() {

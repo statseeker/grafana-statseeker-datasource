@@ -239,7 +239,7 @@ export class StatseekerDatasource {
       }
 
       /* Set the aggregation format if necessary */
-      if (data.aggregation_format && data.aggregation_format !== 'Select aggregation type') {
+      if (data.aggregation_format && data.aggregation_format !== 'Select aggregation type' && alias !== target.pivot_field) {
          field.aggregation_format = this.templateSrv.replace(data.aggregation_format, options.scopedVars);
       }
 
@@ -324,6 +324,10 @@ export class StatseekerDatasource {
             throw {message: 'Limit and Offset must be integers'};
          }
 
+         if (target.pivot_field && target.pivot_field !== 'Select field') {
+            obj.grafana_pivot_field = target.pivot_field;
+         }
+
          /* Add any object options */
          if (target.object_opts) {
             object_opts = this.templateSrv.replace(target.object_opts, options.scopedVars, this.formatJSONTemplate);
@@ -353,7 +357,10 @@ export class StatseekerDatasource {
          }
 
          /* Add the group by */
-         if (target.groupby && target.groupby.length > 0) {
+         if (target.output === 'ts_table') {
+            obj.group_by = ['(({' + target.pivot_field + '} - ' + timefilter.grafana_start + ') - ({' + target.pivot_field + '} - ' + timefilter.grafana_start + ') % ' + timefilter.interval + ') / ' + timefilter.interval];
+         }
+         else if (target.groupby && target.groupby.length > 0) {
             obj.group_by = [];
             for (j = 0; j < target.groupby.length; j++) {
                aggr = target.groupby[j];
@@ -432,6 +439,16 @@ export class StatseekerDatasource {
       };
    }
 
+   getApiValue(value, field) {
+      var val = value;
+
+      if (field.grafana_format && typeof value === 'object') {
+         val = value[field.grafana_format];
+      }
+
+      return val;
+   }
+
    processQueryResult(command, result) {
       var i;
       var output = {data: []};
@@ -445,6 +462,9 @@ export class StatseekerDatasource {
          if (command.objects[i].grafana_output === 'timeseries') {
             output.data = _.concat(output.data, this.processQueryResultTimeseries(command.objects[i], result.data.data.objects[i]));
 
+         }
+         else if (command.objects[i].grafana_output === 'ts_table') {
+            output.data = _.concat(output.data, this.processQueryResultTableAsTimeseries(command.objects[i], result.data.data.objects[i]));
          }
          else {
             this.mergeTableResults(output.data, this.processQueryResultTable(command.objects[i], result.data.data.objects[i]));
@@ -484,6 +504,50 @@ export class StatseekerDatasource {
       }
    }
 
+   processQueryResultTableAsTimeseries(cmdObj, resObj) {
+      /* Pivot the results and aggregate against the provided 'time' field */
+      var t, i, j, key, pivot_val, val, datapoints, index, tf;
+      var result = [];
+      var fields = [];
+
+      if ( ! cmdObj.grafana_pivot_field) {
+         throw {message: '"Time field" not provided'};
+      }
+      tf = cmdObj.fields[cmdObj.grafana_pivot_field].timefilter;
+
+      /* Initialise result */
+      for (key in cmdObj.fields) {
+         if ( ! cmdObj.fields.hasOwnProperty(key) || key === cmdObj.grafana_pivot_field || cmdObj.fields[key].hide) {
+            continue;
+         }
+         fields.push(key);
+         datapoints = [];
+         for (t = tf.grafana_start; t < tf.grafana_finish; t += tf.interval) {
+            datapoints.push([null, t * 1000]);
+         }
+         result.push({target: key, datapoints});
+      }
+
+      /* Loop over the rows */
+      for (i = 0; i < resObj.data.length; i++) {
+         pivot_val = this.getApiValue(resObj.data[i][cmdObj.grafana_pivot_field], cmdObj.fields[cmdObj.grafana_pivot_field]);
+         if (isNaN(pivot_val) || pivot_val < tf.grafana_start || pivot_val >= tf.grafana_finish) {
+            /* Invalid value for pivot */
+            continue;
+         }
+         index = Math.floor((pivot_val - tf.grafana_start) / tf.interval);
+
+         for (j = 0; j < fields.length; j++) {
+            val = this.getApiValue(resObj.data[i][fields[j]], cmdObj.fields[fields[j]]);
+            if ( ! isNaN(val)) {
+               result[j].datapoints[index][0] = val;
+            }
+         }
+      }
+
+      return result;
+   }
+
    processQueryResultTimeseries(cmdObj, resObj) {
       var i, j, time, key, subname, field, value, datapoints, rowData;
       var result = [];
@@ -499,7 +563,7 @@ export class StatseekerDatasource {
                continue;
             }
             field = cmdObj.fields[key];
-            value = resObj.data[i][key];
+            value = this.getApiValue(resObj.data[i][key], field);
             if (field.hide) {
                continue;
             }
@@ -507,10 +571,6 @@ export class StatseekerDatasource {
                /* Value is null */
                result.push({target: key, datapoints: []});
                continue;
-            }
-
-            if (field.grafana_format && typeof value === 'object') {
-               value = value[field.grafana_format];
             }
 
             datapoints = [];
@@ -574,15 +634,11 @@ export class StatseekerDatasource {
          /* Loop over each field (that isn't hidden) */
          for (j = 0; j < result.columns.length; j++) {
             field = cmdObj.fields[result.columns[j].text];
-            value = resObj.data[i][result.columns[j].text];
+            value = this.getApiValue(resObj.data[i][result.columns[j].text], field);
             if (value === null) {
                /* Value is null */
                row.push(null);
                continue;
-            }
-
-            if (field.grafana_format && typeof value === 'object') {
-               value = value[field.grafana_format];
             }
 
             if ( ! isNaN(value) || typeof value === 'string') {
