@@ -315,8 +315,21 @@ export class StatseekerDatasource {
             obj.filter = this.templateSrv.replace(target.adv_filter, options.scopedVars, this.formatSQLTemplate);
          }
 
+         /* Add the groups */
+         if (target.groups && target.groups.length > 0) {
+            obj.groups = [];
+            for (j = 0; j < target.groups.length; j++) {
+               if (target.groups[j].name === 'All Groups') {
+                  obj.groups.push(1);
+               }
+               else {
+                  obj.groups.push(target.groups[j].name);
+               }
+            }
+         }
+
          /* Add the group by */
-         if (target.groupby.length > 0) {
+         if (target.groupby && target.groupby.length > 0) {
             obj.group_by = [];
             for (j = 0; j < target.groupby.length; j++) {
                aggr = target.groupby[j];

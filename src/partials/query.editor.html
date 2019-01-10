@@ -32,6 +32,40 @@
       </div>
 
       <div ng-if="ctrl.target.object && ctrl.target.object !== 'Select object'">
+
+         <div class="gf-form-inline" ng-repeat="grp in ctrl.target.groups">
+            <div class="gf-form gf-form--grow">
+               <label class="gf-form-label query-keyword width-7">
+                  <span ng-show="$first">Groups</span>&nbsp;
+               </label>
+               <metric-segment-model
+                  property="grp.name"
+                  custom="false"
+                  get-options="ctrl.loadGroupList()">
+               </metric-segment-model>
+               <label class="gf-form-label">
+                  <a class="pointer" ng-click="ctrl.removeGroup($index)">
+                     <i class="fa fa-trash"></i>
+                  </a>
+               </label>
+            </div>
+         </div>
+
+         <div class="gf-form-inline">
+            <div class="gf-form">
+               <label class="gf-form-label query-keyword width-7">
+                  <span ng-show="ctrl.target.groups.length === 0">Groups</span>&nbsp;
+               </label>
+               <metric-segment-model
+                  ng-if="ctrl.groupSelection === '+'"
+                  property="ctrl.groupSelection"
+                  custom="false"
+                  get-options="ctrl.loadGroupList()"
+                  on-change="ctrl.addGroup()">
+               </metric-segment-model>
+            </div>
+         </div>
+
          <div class="gf-form-inline" ng-repeat="field in ctrl.target.fields">
             <div class="gf-form">
                <label class="gf-form-label query-keyword width-7">

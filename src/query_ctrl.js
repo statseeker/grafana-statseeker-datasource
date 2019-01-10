@@ -22,7 +22,9 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       this.filterSelection = '+';
       this.sortSelection = '+';
       this.aggrSelection = '+';
+      this.groupSelection = '+';
       this.objectList = [];
+      this.groupList = [];
       this.fieldMap = {};
       this.deviceFieldMap = {};
       this.selectedObject = this.target.object;
@@ -55,6 +57,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
    setTargetProperties(from) {
       this.target.object      = from.object      || 'Select object';
       this.target.object_opts = from.object_opts || null;
+      this.target.groups      = from.groups      || [];
       this.target.fields      = from.fields      || [];
       this.target.filters     = from.filters     || [];
       this.target.adv_filter  = from.adv_filter  || null;
@@ -65,12 +68,8 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       this.target.output      = from.output      || 'timeseries';
    }
 
-   loadObjectList() {
-      if (this.objectList.length > 0) {
-         return Promise.resolve(this.objectList);
-      }
-
-      return this.datasource.runRequest(this.datasource.url + '/object/?fields=name&limit=0&links=none', 'GET').then(response => {
+   loadDataList(endpoint) {
+      return this.datasource.runRequest(this.datasource.url + '/' + endpoint + '/?fields=id,name&limit=0&links=none', 'GET').then(response => {
          var i;
          var output = [];
          var rows = response.data.data.objects[0].data;
@@ -80,7 +79,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
          }
 
          for (i = 0; i < rows.length; i++) {
-            output.push({text: rows[i].name, value: rows[i].name});
+            output.push({text: rows[i].name, value: rows[i].name, id: rows[i].id});
          }
 
          /* Add the template variables */
@@ -98,7 +97,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
          }
          res = err.data.data;
          if ( ! res.success) {
-            if (res.objects.length === 1) {
+            if (res.objects && res.objects.length === 1) {
                throw {message: res.objects[0].status.errmsg, data: err.data, config: err.config};
             }
             else {
@@ -106,6 +105,30 @@ export class StatseekerQueryCtrl extends QueryCtrl {
             }
          }
       });
+   }
+
+
+   loadObjectList() {
+      if (this.objectList.length > 0) {
+         return Promise.resolve(this.objectList);
+      }
+
+      return this.loadDataList('object');
+   }
+
+   loadGroupList() {
+      var p;
+
+      if (this.groupList.length > 0) {
+         return Promise.resolve(this.groupList);
+      }
+
+      p = this.loadDataList('group');
+      p.then(list => {
+         this.groupList = list;
+      });
+
+      return p;
    }
 
    loadFieldMap(obj) {
@@ -143,7 +166,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
          }
          res = err.data.data;
          if ( ! res.success) {
-            if (res.objects.length === 1) {
+            if (res.objects && res.objects.length === 1) {
                throw {message: res.objects[0].status.errmsg, data: err.data, config: err.config};
             }
             else {
@@ -273,6 +296,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
    objectChanged() {
       var obj = this.datasource.templateSrv.replace(this.target.object);
 
+      this.target.groups = [];
       this.target.fields = [];
       this.target.filters = [];
       this.target.sortby = [];
@@ -289,8 +313,25 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       });
    }
 
+   addGroup() {
+      var i;
+
+      for (i = 0; i < this.groupList.length; i++) {
+         if (this.groupSelection === this.groupList[i].value) {
+            this.target.groups.push({name: this.groupList[i].value});
+         }
+      }
+      this.groupSelection = '+';
+   }
+
    addField() {
-      var row = {
+      var row;
+
+      if ( ! (this.fieldSelection in this.fieldMap)) {
+         return;
+      }
+
+      row = {
          name: this.fieldSelection,
          format: 'Select format',
          aggregation_format: 'Select aggregation type',
@@ -302,24 +343,43 @@ export class StatseekerQueryCtrl extends QueryCtrl {
    }
 
    addFilter() {
-      var row = {field: this.filterSelection, format: 'Select format'};
+      var row;
+
+      if ( ! (this.filterSelection in this.fieldMap)) {
+         return;
+      }
+      row = {field: this.filterSelection, format: 'Select format'};
 
       this.target.filters.push(row);
       this.filterSelection = '+';
    }
 
    addSort() {
-      var row = {field: this.sortSelection, format: 'Select format', order: 'asc'};
+      var row;
+
+      if ( ! (this.sortSelection in this.fieldMap)) {
+         return;
+      }
+      row = {field: this.sortSelection, format: 'Select format', order: 'asc'};
 
       this.target.sortby.push(row);
       this.sortSelection = '+';
    }
 
    addAggr() {
-      var row = {field: this.aggrSelection, format: 'Select format', custom: ''};
+      var row;
+
+      if ( ! (this.aggrSelection in this.fieldMap)) {
+         return;
+      }
+      row = {field: this.aggrSelection, format: 'Select format', custom: ''};
 
       this.target.groupby.push(row);
       this.aggrSelection = '+';
+   }
+
+   removeGroup(index) {
+      this.target.groups.splice(index, 1);
    }
 
    removeField(index) {
