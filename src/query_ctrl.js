@@ -108,6 +108,9 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       });
    }
 
+   move(list, from, to) {
+      _.move(list, from, to);
+   }
 
    loadObjectList() {
       if (this.objectList.length > 0) {
@@ -370,7 +373,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
    addAggr() {
       var row;
 
-      if ( ! (this.aggrSelection in this.fieldMap)) {
+      if ( ! (this.aggrSelection in this.fieldMap || this.aggrSelection === '~All~' || this.aggrSelection === '~Custom~')) {
          return;
       }
       row = {field: this.aggrSelection, format: 'Select format', custom: ''};

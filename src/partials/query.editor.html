@@ -109,6 +109,16 @@
                   ng-model="field.opts"
                   spellcheck="false"
                   placeholder="Field Options (JSON)" />
+               <label class="gf-form-label" ng-hide="$first">
+                  <a class="pointer">
+                     <i class="fa fa-arrow-up" ng-click="ctrl.move(ctrl.target.fields, $index, $index - 1)"></i>
+                  </a>
+               </label>
+               <label class="gf-form-label" ng-style="{'visibility': $last ? 'hidden' : 'visible'}" ng-hide="ctrl.target.fields.length === 1">
+                  <a class="pointer">
+                     <i class="fa fa-arrow-down" ng-click="ctrl.move(ctrl.target.fields, $index, $index + 1)"></i>
+                  </a>
+               </label>
                <label class="gf-form-label">
                   <a class="pointer" ng-click="field.hide = ! field.hide">
                      <i class="fa fa-eye"></i>
@@ -206,6 +216,16 @@
                   custom="false"
                   options="ctrl.sortDirections">
                </metric-segment-model>
+               <label class="gf-form-label" ng-hide="$first">
+                  <a class="pointer">
+                     <i class="fa fa-arrow-up" ng-click="ctrl.move(ctrl.target.sortby, $index, $index - 1)"></i>
+                  </a>
+               </label>
+               <label class="gf-form-label" ng-style="{'visibility': $last ? 'hidden' : 'visible'}" ng-hide="ctrl.target.sortby.length === 1">
+                  <a class="pointer">
+                     <i class="fa fa-arrow-down" ng-click="ctrl.move(ctrl.target.sortby, $index, $index + 1)"></i>
+                  </a>
+               </label>
                <label class="gf-form-label">
                   <a class="pointer" ng-click="ctrl.removeSort($index)">
                      <i class="fa fa-trash"></i>
@@ -253,6 +273,16 @@
                   spellcheck="false"
                   placeholder="Custom grouping Formula. eg. {cdt_device} || '.' || {name}" />
                </metric-segment-model>
+               <label class="gf-form-label" ng-hide="$first">
+                  <a class="pointer">
+                     <i class="fa fa-arrow-up" ng-click="ctrl.move(ctrl.target.groupby, $index, $index - 1)"></i>
+                  </a>
+               </label>
+               <label class="gf-form-label" ng-style="{'visibility': $last ? 'hidden' : 'visible'}" ng-hide="ctrl.target.groupby.length === 1">
+                  <a class="pointer">
+                     <i class="fa fa-arrow-down" ng-click="ctrl.move(ctrl.target.groupby, $index, $index + 1)"></i>
+                  </a>
+               </label>
                <label class="gf-form-label">
                   <a class="pointer" ng-click="ctrl.removeAggr($index)">
                      <i class="fa fa-trash"></i>
