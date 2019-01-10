@@ -159,15 +159,15 @@ export class StatseekerDatasource {
       return Promise.resolve([]);
    }
 
-   getTimefilter(range, intervalMs, maxDataPoints) {
-      var from, to, interval;
+   getTimefilter(options, target) {
+      var from, to, interval, str;
 
-      if ( ! range) {
+      if ( ! options.range) {
          return null;
       }
-      from = Math.trunc(range.from.valueOf() / 1000);
-      to = Math.trunc(range.to.valueOf() / 1000);
-      interval = intervalMs / 1000;
+      from = Math.trunc(options.range.from.valueOf() / 1000);
+      to = Math.trunc(options.range.to.valueOf() / 1000);
+      interval = options.intervalMs / 1000;
 
       /* The minimum interval is 60s */
       if (interval < 60) {
@@ -175,9 +175,32 @@ export class StatseekerDatasource {
       }
 
       /* Increase the interval if necessary */
-      if (Math.trunc((to - from) / maxDataPoints) > interval) {
-         interval = Math.trunc((to - from) / maxDataPoints);
+      if (Math.trunc((to - from) / options.maxDataPoints) > interval) {
+         interval = Math.trunc((to - from) / options.maxDataPoints);
          interval = Math.trunc(interval / 60) * 60;
+      }
+
+      if (target.interval) {
+         str = this.templateSrv.replace(target.interval, options.scopedVars);
+
+         /* Decode the interval */
+         if ( ! (/^\d+[smhd]$/).test(str)) {
+            throw {message: 'Invalid interval "' + str + '"'};
+         }
+         interval = parseInt(str);
+         switch (str[str.length - 1]) {
+         case 'm':
+            interval *= 60;
+            break;
+         case 'h':
+            interval *= 3600;
+            break;
+         case 'd':
+            interval *= 86400;
+            break;
+         default:
+            break;
+         }
       }
 
       return {
@@ -268,12 +291,13 @@ export class StatseekerDatasource {
       var alias, aggr, fld_json, fmt_json, field_name, fmt;
       var objects = [];
 
-      /* Convert the timefilter to valid tfc */
-      timefilter = this.getTimefilter(options.range, options.intervalMs, options.maxDataPoints);
-
       /* Create the objects */
       for (i = 0; i < options.targets.length; i++) {
          target = options.targets[i];
+
+         /* Convert the timefilter to valid tfc */
+         timefilter = this.getTimefilter(options, target);
+
          if (target.rawMode) {
             target = _.attempt(JSON.parse, target.rawQuery);
             if (_.isError(target)) {

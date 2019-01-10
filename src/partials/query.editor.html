@@ -308,6 +308,14 @@
                   custom="false"
                   options="ctrl.outputModes">
                </metric-segment-model>
+               <label ng-if="ctrl.target.output === 'timeseries'" class="gf-form-label query-keyword">Interval Override</label>
+               <input
+                  ng-if="ctrl.target.output === 'timeseries'"
+                  type="text"
+                  class="gf-form-input width-10"
+                  ng-model="ctrl.target.interval"
+                  spellcheck="false"
+                  placeholder="eg. 60s, 5m, 1d" />
             </div>
          </div>
       </div>

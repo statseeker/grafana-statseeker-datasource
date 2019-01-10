@@ -66,6 +66,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       this.target.limit       = from.limit       || 10;
       this.target.offset      = from.offset      || 0;
       this.target.output      = from.output      || 'timeseries';
+      this.target.interval    = from.interval    || null;
    }
 
    loadDataList(endpoint) {
