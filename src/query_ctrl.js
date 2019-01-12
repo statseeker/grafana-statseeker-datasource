@@ -25,31 +25,19 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       this.aggrSelection = '+';
       this.groupSelection = '+';
       this.objectList = [];
+      this.objectLinks = {};
       this.groupList = [];
-      this.fieldMap = {};
+      this.descriptions = {};
       this.deviceFieldMap = {};
       this.selectedObject = this.target.object;
       this.loadObjectList().then(o => {
-         this.loadFieldMap('cdt_device').then(f_dev => {
-            var obj;
-
-            /* Prepend 'Device' to all fields */
-            _.forOwn(f_dev, (val, key) => {
-               this.deviceFieldMap['cdt_device.' + key] = val;
-            });
-            if (this.selectedObject) {
-               obj = this.datasource.templateSrv.replace(this.selectedObject);
-
-               this.loadFieldMap(obj).then(f => {
-                  this.fieldMap = f;
-                  if (obj !== 'cdt_device' && obj !== 'cdt_ranges' && obj.startsWith('cdt_')) {
-                     _.merge(this.fieldMap, this.deviceFieldMap);
-                  }
-                  this.objectList = o;
-               });
-            }
-         });
+         this.objectList = o;
       });
+      this.loadDescription('cdt_device');
+      if (this.selectedObject) {
+         this.loadDescription(this.datasource.templateSrv.replace(this.selectedObject));
+      }
+      this.loadGroupList();
 
       /* Target properties */
       this.setTargetProperties(this.target);
@@ -123,7 +111,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
    }
 
    loadGroupList() {
-      var p;
+      var i, j, p;
 
       if (this.groupList.length > 0) {
          return Promise.resolve(this.groupList);
@@ -132,37 +120,43 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       p = this.loadDataList('group');
       p.then(list => {
          this.groupList = list;
+
+         /* Update any names in the target groups (and remove any non-existant ones) */
+         for (i = this.target.groups.length - 1; i >= 0; i--) {
+            this.target.groups[i].name = null;
+            for (j = 0; j < list.length; j++) {
+               if (list[j].id === this.target.groups[i].id) {
+                  this.target.groups[i].name = list[j].value;
+                  break;
+               }
+            }
+            if (this.target.groups[i].name === null) {
+               this.target.groups.splice(i, 1);
+            }
+         }
       });
 
       return p;
    }
 
-   loadFieldMap(obj) {
+   loadDescription(obj) {
       if ( ! obj || obj === 'Select object') {
          return Promise.resolve([]);
       }
 
-      return this.datasource.runRequest(this.datasource.url + '/' + obj + '/describe?links=none', 'GET').then(response => {
-         var fieldMap, formats;
+      if (this.descriptions[obj]) {
+         return Promise.resolve(this.descriptions[obj]);
+      }
 
-         fieldMap = response.data.data.objects[0].fields;
-         _.forOwn(fieldMap, (val, key) => {
-            formats = [];
-            _.forOwn(_.get(val, 'options.formats.values', []), (v, fmt) => {
-               formats.push({text: fmt, value: fmt});
-            });
-            val.formats = _.sortBy(formats, [v => {
-               return v.text.toLowerCase();
-            }]);
+      return this.datasource.runRequest(this.datasource.url + '/' + obj + '/describe?links=none', 'GET').then(response => {
+         this.descriptions[obj] = response.data.data.objects[0];
+
+         /* Get the descriptions of linked fields */
+         _.forOwn(_.get(response, 'data.data.objects[0].info.links', {}), (val, key) => {
+            this.loadDescription(val.dst);
          });
 
-         /* Add the template variables */
-         for (const variable of this.datasource.templateSrv.variables) {
-            fieldMap['$' + variable.name] = {name: '$' + variable.name};
-            fieldMap['$' + variable.name].formats = [];
-         }
-
-         return fieldMap;
+         return this.descriptions[obj];
       },
       err => {
          var res;
@@ -182,39 +176,94 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       });
    }
 
-   getFieldList() {
-      var output = [];
+   getObjectFields(output, done, obj) {
+      var selectedObj = this.datasource.templateSrv.replace(this.selectedObject);
 
-      _.forOwn(this.fieldMap, (val, key) => {
+      if (done[obj]) {
+         return;
+      }
+
+      _.forOwn(_.get(this.descriptions, obj + '.fields', {}), (val, key) => {
+         if (obj === selectedObj) {
+            output.push({text: key, value: key});
+         }
+         else {
+            output.push({text: obj + '.' + key, value: obj + '.' + key});
+         }
+      });
+
+      done[obj] = true;
+
+      /* Get any linked object fields */
+      _.forOwn(_.get(this.descriptions, obj + '.info.links', {}), (val, key) => {
+         this.getObjectFields(output, done, val.dst);
+      });
+   }
+
+   buildFieldList() {
+      var output = [];
+      var done = {};
+      var obj = this.datasource.templateSrv.replace(this.selectedObject);
+
+      this.getObjectFields(output, done, this.datasource.templateSrv.replace(this.selectedObject));
+
+      /* Add the device fields at the end for cdt_ objects*/
+      if (obj.startsWith('cdt_') && obj !== 'cdt_ranges') {
+         this.getObjectFields(output, done, 'cdt_device');
+      }
+
+      /* Add the template variables */
+      for (const variable of this.datasource.templateSrv.variables) {
+         output.push({text: '$' + variable.name, value: '$' + variable.name});
+      }
+
+      return output;
+   }
+
+   getFieldList() {
+      return Promise.resolve(this.buildFieldList()).then(this.uiSegmentSrv.transformToSegments(false));
+   }
+
+   buildFormatList(field) {
+      var output = [];
+      var fld = this.datasource.templateSrv.replace(field, null, this.formatFirstTemplate);
+      var obj = this.datasource.templateSrv.replace(this.selectedObject);
+      var fmtList, arr;
+
+      arr = fld.split('.');
+      if (arr.length === 1) {
+         fmtList = _.get(this.descriptions, obj + '.fields.' + fld + '.options.formats.values', []);
+      }
+      else {
+         fmtList = _.get(this.descriptions, arr[0] + '.fields.' + arr[1] + '.options.formats.values', []);
+      }
+
+      if ( ! fmtList) {
+         return [];
+      }
+
+      _.forOwn(fmtList, (val, key) => {
          output.push({text: key, value: key});
       });
 
-      return Promise.resolve(_.sortBy(output, [val => {
+      return _.sortBy(output, [val => {
          return val.text.toLowerCase();
-      }])).then(this.uiSegmentSrv.transformToSegments(false));
+      }]);
    }
 
    getFormatList(field) {
-      var output = [];
-      var fld = this.datasource.templateSrv.replace(field, null, this.formatFirstTemplate);
+      var output = this.buildFormatList(field);
 
-      if (this.fieldMap[fld]) {
-         output = _.cloneDeep(this.fieldMap[fld].formats);
-         /* Add the template variables */
-         for (const variable of this.datasource.templateSrv.variables) {
-            output.push({text: '$' + variable.name, value: '$' + variable.name});
-         }
+      /* Add the template variables */
+      for (const variable of this.datasource.templateSrv.variables) {
+         output.push({text: '$' + variable.name, value: '$' + variable.name});
       }
 
-      return Promise.resolve(_.sortBy(output, [val => {
-         return val.text.toLowerCase();
-      }])).then(this.uiSegmentSrv.transformToSegments(false));
+      return Promise.resolve(output).then(this.uiSegmentSrv.transformToSegments(false));
    }
 
    fieldHasFormats(field) {
-      var fld = this.datasource.templateSrv.replace(field, null, this.formatFirstTemplate);
-
-      return this.fieldMap[fld] && this.fieldMap[fld].formats.length > 0;
+      return this.buildFormatList(field).length > 0;
    }
 
    getSelectedFields() {
@@ -255,7 +304,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
 
       for (i = 0; i < this.target.fields.length; i++) {
          f_alias = this.target.fields[i].alias ? this.target.fields[i].alias : this.target.fields[i].name;
-         if (f_alias === alias && this.fieldMap[this.target.fields[i].name]) {
+         if (f_alias === alias) {
             return this.getFormatList(this.target.fields[i].name);
          }
       }
@@ -291,7 +340,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
 
       for (i = 0; i < this.target.fields.length; i++) {
          f_alias = this.target.fields[i].alias ? this.target.fields[i].alias : this.target.fields[i].name;
-         if (f_alias === alias && this.fieldMap[this.target.fields[i].name]) {
+         if (f_alias === alias) {
             return this.fieldHasFormats(this.target.fields[i].name);
          }
       }
@@ -308,15 +357,8 @@ export class StatseekerQueryCtrl extends QueryCtrl {
       this.target.sortby = [];
       this.target.groupby = [];
       this.target.object_opts = null;
-      this.selectedObject = null;
-
-      this.loadFieldMap(obj).then(f => {
-         this.fieldMap = f;
-         if (obj !== 'cdt_device' && obj !== 'cdt_ranges' && obj.startsWith('cdt_')) {
-            _.merge(this.fieldMap, this.deviceFieldMap);
-         }
-         this.selectedObject = this.target.object;
-      });
+      this.selectedObject = this.target.object;
+      this.loadDescription(obj);
    }
 
    addGroup() {
@@ -324,7 +366,7 @@ export class StatseekerQueryCtrl extends QueryCtrl {
 
       for (i = 0; i < this.groupList.length; i++) {
          if (this.groupSelection === this.groupList[i].value) {
-            this.target.groups.push({name: this.groupList[i].value});
+            this.target.groups.push({id: this.groupList[i].id, name: this.groupList[i].value});
          }
       }
       this.groupSelection = '+';
@@ -332,8 +374,9 @@ export class StatseekerQueryCtrl extends QueryCtrl {
 
    addField() {
       var row;
+      var fieldMap = _.keyBy(this.buildFieldList(), 'text');
 
-      if ( ! (this.fieldSelection in this.fieldMap)) {
+      if ( ! (this.fieldSelection in fieldMap)) {
          return;
       }
 

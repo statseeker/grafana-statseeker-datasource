@@ -129,7 +129,7 @@ export class StatseekerDatasource {
          }
 
          return this.query({targets: [json]}).then(resp => {
-            var i, val, txt;
+            var i, j, val, txt, tmp_val;
             var output = [];
 
             if ( ! resp.data || resp.data.length === 0) {
@@ -144,7 +144,19 @@ export class StatseekerDatasource {
 
             for (i = 0; i < resp.data[0].rows.length; i++) {
                val = resp.data[0].rows[i][0];
-               txt = resp.data[0].columns.length > 1 ? resp.data[0].rows[i][1] : resp.data[0].rows[i][0];
+               txt = '';
+               for (j = 1; j < resp.data[0].columns.length; j++) {
+                  if (resp.data[0].rows[i][j].hide) {
+                     continue;
+                  }
+                  tmp_val = resp.data[0].rows[i][j];
+                  if ( ! isNaN(tmp_val) || typeof tmp_val === 'string') {
+                     txt += txt.length > 0 ? ' ' + tmp_val : tmp_val;
+                  }
+               }
+               if (resp.data[0].columns.length === 0) {
+                  txt = resp.data[0].rows[i][0];
+               }
                if ( ! isNaN(val) || typeof val === 'string') {
                   if ( ! isNaN(txt) || typeof txt === 'string') {
                      output.push({text: txt, value: val});
@@ -351,7 +363,7 @@ export class StatseekerDatasource {
                   obj.groups.push(1);
                }
                else {
-                  obj.groups.push(target.groups[j].name);
+                  obj.groups.push(target.groups[j].id);
                }
             }
          }
