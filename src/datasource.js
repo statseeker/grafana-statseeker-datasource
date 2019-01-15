@@ -455,18 +455,63 @@ export class StatseekerDatasource {
       var val = value;
 
       if (field.grafana_format && typeof value === 'object') {
-         val = value[field.grafana_format];
+         if (value && field.grafana_format in value) {
+            val = value[field.grafana_format];
+         }
+         else {
+            val = null;
+         }
       }
 
       return val;
    }
 
    processQueryResult(command, result) {
-      var i;
+      var i, cmd, res, row, key;
       var output = {data: []};
 
       if ( ! result.data || ! result.data.data || ! result.data.data.objects) {
          throw {message: 'Malformed API response'};
+      }
+
+      for (i = 0; i < result.data.data.objects.length; i++) {
+         cmd = command.objects[i];
+         res = result.data.data.objects[i];
+         if (cmd.group_by && cmd.group_by.length > 0 && res.data.length === 0) {
+            /* Add a default aggregate row for no data */
+            row = [];
+            for (key in cmd.fields) {
+               if ( ! cmd.fields.hasOwnProperty(key) || cmd.fields[key].hide) {
+                  continue;
+               }
+
+               row = {};
+               switch (cmd.fields[key].aggregation_format) {
+               case 'count':
+               case 'count_all':
+                  if (cmd.fields[key].grafana_format) {
+                     row[key] = {};
+                     row[key][cmd.fields[key].grafana_format] = 0;
+                  }
+                  else {
+                     row[key] = 0;
+                  }
+                  break;
+               default:
+                  if (cmd.fields[key].grafana_format) {
+                     row[key] = {};
+                     row[key][cmd.fields[key].grafana_format] = null;
+                  }
+                  else {
+                     row[key] = null;
+                  }
+                  break;
+               }
+
+               res.data.push(row);
+               res.data_total = 1;
+            }
+         }
       }
 
       /* Loop over each object */
