@@ -733,7 +733,7 @@ export class StatseekerDatasource {
             }
          }
 
-         return '(' + output.join() + ')';
+         return output.join();
       }
       else if ( ! isNaN(value)) {
          return value;
