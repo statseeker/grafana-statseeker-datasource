@@ -300,7 +300,7 @@ export class StatseekerDatasource {
 
    buildCommand(options) {
       var i, j, k, n, timefilter, target, obj, object_opts, json, custom;
-      var alias, aggr, fld_json, fmt_json, field_name, fmt;
+      var alias, aggr, fld_json, fmt_json, field_name, fmt, grp, arr;
       var objects = [];
 
       /* Create the objects */
@@ -359,11 +359,21 @@ export class StatseekerDatasource {
          if (target.groups && target.groups.length > 0) {
             obj.groups = [];
             for (j = 0; j < target.groups.length; j++) {
-               if (target.groups[j].name === 'All Groups') {
-                  obj.groups.push(1);
+               if (target.groups[j].id) {
+                  obj.groups.push(target.groups[j].id);
                }
                else {
-                  obj.groups.push(target.groups[j].id);
+                  /* This is a variable */
+                  grp = this.templateSrv.replace(target.groups[j].name, options.scopedVars, 'csv');
+                  arr = grp.split(',');
+                  for (k = 0; k < arr.length; k++) {
+                     if (isNaN(arr[k])) {
+                        obj.groups.push(arr[k]);
+                     }
+                     else {
+                        obj.groups.push(parseInt(arr[k]));
+                     }
+                  }
                }
             }
          }

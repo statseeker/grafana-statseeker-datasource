@@ -123,6 +123,9 @@ export class StatseekerQueryCtrl extends QueryCtrl {
 
          /* Update any names in the target groups (and remove any non-existant ones) */
          for (i = this.target.groups.length - 1; i >= 0; i--) {
+            if ( ! this.target.groups[i].id) {
+               continue;
+            }
             this.target.groups[i].name = null;
             for (j = 0; j < list.length; j++) {
                if (list[j].id === this.target.groups[i].id) {
