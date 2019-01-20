@@ -172,7 +172,7 @@ System.register(['lodash'], function (_export, _context) {
                      }
 
                      return this.query({ targets: [json] }).then(function (resp) {
-                        var i, val, txt;
+                        var i, j, val, txt, tmp_val;
                         var output = [];
 
                         if (!resp.data || resp.data.length === 0) {
@@ -185,7 +185,19 @@ System.register(['lodash'], function (_export, _context) {
 
                         for (i = 0; i < resp.data[0].rows.length; i++) {
                            val = resp.data[0].rows[i][0];
-                           txt = resp.data[0].columns.length > 1 ? resp.data[0].rows[i][1] : resp.data[0].rows[i][0];
+                           txt = '';
+                           for (j = 1; j < resp.data[0].columns.length; j++) {
+                              if (resp.data[0].rows[i][j].hide) {
+                                 continue;
+                              }
+                              tmp_val = resp.data[0].rows[i][j];
+                              if (!isNaN(tmp_val) || typeof tmp_val === 'string') {
+                                 txt += txt.length > 0 ? ' ' + tmp_val : tmp_val;
+                              }
+                           }
+                           if (resp.data[0].columns.length === 0) {
+                              txt = resp.data[0].rows[i][0];
+                           }
                            if (!isNaN(val) || typeof val === 'string') {
                               if (!isNaN(txt) || typeof txt === 'string') {
                                  output.push({ text: txt, value: val });
@@ -201,15 +213,15 @@ System.register(['lodash'], function (_export, _context) {
                }
             }, {
                key: 'getTimefilter',
-               value: function getTimefilter(range, intervalMs, maxDataPoints) {
-                  var from, to, interval;
+               value: function getTimefilter(options, target) {
+                  var from, to, interval, str;
 
-                  if (!range) {
+                  if (!options.range) {
                      return null;
                   }
-                  from = Math.trunc(range.from.valueOf() / 1000);
-                  to = Math.trunc(range.to.valueOf() / 1000);
-                  interval = intervalMs / 1000;
+                  from = Math.trunc(options.range.from.valueOf() / 1000);
+                  to = Math.trunc(options.range.to.valueOf() / 1000);
+                  interval = options.intervalMs / 1000;
 
                   /* The minimum interval is 60s */
                   if (interval < 60) {
@@ -217,9 +229,32 @@ System.register(['lodash'], function (_export, _context) {
                   }
 
                   /* Increase the interval if necessary */
-                  if (Math.trunc((to - from) / maxDataPoints) > interval) {
-                     interval = Math.trunc((to - from) / maxDataPoints);
+                  if (Math.trunc((to - from) / options.maxDataPoints) > interval) {
+                     interval = Math.trunc((to - from) / options.maxDataPoints);
                      interval = Math.trunc(interval / 60) * 60;
+                  }
+
+                  if (target.interval) {
+                     str = this.templateSrv.replace(target.interval, options.scopedVars);
+
+                     /* Decode the interval */
+                     if (!/^\d+[smhd]$/.test(str)) {
+                        throw { message: 'Invalid interval "' + str + '"' };
+                     }
+                     interval = parseInt(str);
+                     switch (str[str.length - 1]) {
+                        case 'm':
+                           interval *= 60;
+                           break;
+                        case 'h':
+                           interval *= 3600;
+                           break;
+                        case 'd':
+                           interval *= 86400;
+                           break;
+                        default:
+                           break;
+                     }
                   }
 
                   return {
@@ -230,17 +265,94 @@ System.register(['lodash'], function (_export, _context) {
                   };
                }
             }, {
+               key: 'buildField',
+               value: function buildField(options, target, obj, data, alias, name, format, timefilter) {
+                  var field, arr, i, opts, json;
+
+                  field = {};
+
+                  if (timefilter) {
+                     field.timefilter = timefilter;
+                  }
+                  if (data.hide) {
+                     field.hide = data.hide;
+                  }
+
+                  if (name.indexOf('.') > -1) {
+                     arr = name.split('.');
+                     field.object = arr[0];
+                     field.field = arr[1];
+                  } else {
+                     field.field = name;
+                  }
+
+                  /* Set the format if necessary */
+                  if (format && format !== 'Select format') {
+                     field.grafana_format = format;
+                     field.formats = [format];
+                  }
+
+                  /* Set the aggregation format if necessary */
+                  if (data.aggregation_format && data.aggregation_format !== 'Select aggregation type' && alias !== target.pivot_field) {
+                     field.aggregation_format = this.templateSrv.replace(data.aggregation_format, options.scopedVars);
+                  }
+
+                  /* Check for a filter */
+                  if (target.filters) {
+                     for (i = 0; i < target.filters.length; i++) {
+                        if (target.filters[i].field === alias) {
+                           field.filter = { query: this.templateSrv.replace(target.filters[i].query, options.scopedVars, this.formatSQLTemplate) };
+                           if (target.filters[i].format !== 'Select format') {
+                              field.filter.format = this.templateSrv.replace(target.filters[i].format, options.scopedVars);
+                           }
+                        }
+                     }
+                  }
+
+                  /* Check for sorting */
+                  if (target.sortby) {
+                     for (i = 0; i < target.sortby.length; i++) {
+                        if (target.sortby[i].field === alias) {
+                           field.sort = {
+                              priority: i + 1,
+                              order: target.sortby[i].order
+                           };
+                           if (target.sortby[i].format !== 'Select format') {
+                              field.sort.format = this.templateSrv.replace(target.sortby[i].format, options.scopedVars);
+                           }
+                        }
+                     }
+                  }
+
+                  /* Add any field options */
+                  if (data.opts) {
+                     opts = this.templateSrv.replace(data.opts, options.scopedVars, this.formatJSONTemplate);
+                     json = _.attempt(JSON.parse, opts);
+                     if (_.isError(json)) {
+                        throw { message: 'Error in ' + alias + ' options: ' + json.message };
+                     }
+                     field = _.merge(field, json);
+                  }
+
+                  if (obj.fields[alias]) {
+                     throw { message: 'Duplicate field names defined (' + alias + ')' };
+                  }
+                  obj.fields[alias] = field;
+               }
+            }, {
                key: 'buildCommand',
                value: function buildCommand(options) {
-                  var i, j, k, timefilter, target, obj, opts, object_opts, json, alias, field;
+                  var i, j, k, n, timefilter, target, obj, object_opts, json, custom;
+                  var alias, aggr, fld_json, fmt_json, field_name, fmt, grp, arr;
                   var objects = [];
-
-                  /* Convert the timefilter to valid tfc */
-                  timefilter = this.getTimefilter(options.range, options.intervalMs, options.maxDataPoints);
 
                   /* Create the objects */
                   for (i = 0; i < options.targets.length; i++) {
                      target = options.targets[i];
+
+                     /* Convert the timefilter to valid tfc */
+                     timefilter = this.getTimefilter(options, target);
+
                      if (target.rawMode) {
                         target = _.attempt(JSON.parse, target.rawQuery);
                         if (_.isError(target)) {
@@ -267,6 +379,10 @@ System.register(['lodash'], function (_export, _context) {
                         throw { message: 'Limit and Offset must be integers' };
                      }
 
+                     if (target.pivot_field && target.pivot_field !== 'Select field') {
+                        obj.grafana_pivot_field = target.pivot_field;
+                     }
+
                      /* Add any object options */
                      if (target.object_opts) {
                         object_opts = this.templateSrv.replace(target.object_opts, options.scopedVars, this.formatJSONTemplate);
@@ -282,92 +398,82 @@ System.register(['lodash'], function (_export, _context) {
                         obj.filter = this.templateSrv.replace(target.adv_filter, options.scopedVars, this.formatSQLTemplate);
                      }
 
+                     /* Add the groups */
+                     if (target.groups && target.groups.length > 0) {
+                        obj.groups = [];
+                        for (j = 0; j < target.groups.length; j++) {
+                           if (target.groups[j].id) {
+                              obj.groups.push(target.groups[j].id);
+                           } else {
+                              /* This is a variable */
+                              grp = this.templateSrv.replace(target.groups[j].name, options.scopedVars, 'csv');
+                              arr = grp.split(',');
+                              for (k = 0; k < arr.length; k++) {
+                                 if (isNaN(arr[k])) {
+                                    obj.groups.push(arr[k]);
+                                 } else {
+                                    obj.groups.push(parseInt(arr[k]));
+                                 }
+                              }
+                           }
+                        }
+                     }
+
+                     /* Add the group by */
+                     if (target.output === 'ts_table') {
+                        obj.group_by = ['(({' + target.pivot_field + '} - ' + timefilter.grafana_start + ') - ({' + target.pivot_field + '} - ' + timefilter.grafana_start + ') % ' + timefilter.interval + ') / ' + timefilter.interval];
+                     } else if (target.groupby && target.groupby.length > 0) {
+                        obj.group_by = [];
+                        for (j = 0; j < target.groupby.length; j++) {
+                           aggr = target.groupby[j];
+                           field_name = this.templateSrv.replace(aggr.field, options.scopedVars);
+                           fmt = this.templateSrv.replace(aggr.format, options.scopedVars);
+                           custom = this.templateSrv.replace(aggr.custom, options.scopedVars);
+
+                           if (aggr.field === '~All~') {
+                              obj.group_by.push('0');
+                           } else if (aggr.field === '~Custom~') {
+                              obj.group_by.push(custom);
+                           } else if (aggr.format === 'Select format') {
+                              obj.group_by.push('{' + field_name + '}');
+                           } else {
+                              obj.group_by.push('{' + field_name + ':' + fmt + '}');
+                           }
+                        }
+                     }
+
                      /* Add the fields */
                      for (j = 0; j < target.fields.length; j++) {
-                        if (!target.fields[j].name) {
-                           throw { message: 'Field name missing' };
-                        }
 
-                        alias = target.fields[j].alias ? target.fields[j].alias : target.fields[j].name;
-                        field = {
-                           field: this.templateSrv.replace(target.fields[j].name, options.scopedVars),
-                           hide: target.fields[j].hide
-                        };
+                        /* Check for a multi-fields or formats */
+                        field_name = this.templateSrv.replace(target.fields[j].name, options.scopedVars);
+                        fmt = this.templateSrv.replace(target.fields[j].format, options.scopedVars);
+                        fld_json = _.attempt(JSON.parse, this.templateSrv.replace(target.fields[j].name, options.scopedVars, this.formatJSONTemplate));
+                        fmt_json = _.attempt(JSON.parse, this.templateSrv.replace(target.fields[j].format, options.scopedVars, this.formatJSONTemplate));
 
-                        if (timefilter) {
-                           field.timefilter = timefilter;
-                        }
-
-                        if (target.fields[j].name.startsWith('cdt_device.')) {
-                           if (!obj.join) {
-                              obj.join = '{' + obj.type + '.deviceid} = {cdt_device.id}';
-                           }
-                           field.field = target.fields[j].name.replace('cdt_device.', '');
-                           field.object = 'cdt_device';
-                        }
-
-                        /* Set the format if necessary */
-                        if (target.fields[j].format && target.fields[j].format !== 'Select format') {
-                           field.grafana_format = this.templateSrv.replace(target.fields[j].format, options.scopedVars);
-                           field.formats = [field.grafana_format];
-                        }
-
-                        /* Check for a filter */
-                        if (target.filters) {
-                           for (k = 0; k < target.filters.length; k++) {
-                              if (target.filters[k].field === alias) {
-                                 field.filter = { query: this.templateSrv.replace(target.filters[k].query, options.scopedVars, this.formatSQLTemplate) };
-                                 if (target.filters[k].format !== 'Select format') {
-                                    field.filter.format = this.templateSrv.replace(target.filters[k].format, options.scopedVars);
-                                 }
-                              }
-                           }
-                        }
-
-                        /* Check for sorting */
-                        if (target.sortby) {
-                           for (k = 0; k < target.sortby.length; k++) {
-                              if (target.sortby[k].field === alias) {
-                                 field.sort = {
-                                    priority: k + 1,
-                                    order: target.sortby[k].order
-                                 };
-                                 if (target.sortby[k].format !== 'Select format') {
-                                    field.sort.format = this.templateSrv.replace(target.sortby[k].format, options.scopedVars);
-                                 }
-                              }
-                           }
-                        }
-
-                        /* Add any field options */
-                        if (target.fields[j].opts) {
-                           opts = this.templateSrv.replace(target.fields[j].opts, options.scopedVars, this.formatJSONTemplate);
-                           json = _.attempt(JSON.parse, opts);
-                           if (_.isError(json)) {
-                              throw { message: 'Error in ' + alias + ' options: ' + json.message };
-                           }
-                           field = _.merge(field, json);
-                        }
-
-                        opts = this.templateSrv.replace(target.fields[j].name, options.scopedVars, this.formatJSONTemplate);
-                        json = _.attempt(JSON.parse, opts);
-                        if (_.isArray(json)) {
+                        if (_.isArray(fld_json)) {
                            /* Field is a multi-value, so add each field in the list */
-                           for (k = 0; k < json.length; k++) {
-                              alias = target.fields[j].alias ? target.fields[j].alias + ' ' + json[k] : json[k];
-                              if (obj.fields[alias]) {
-                                 throw { message: 'Duplicate field names defined (' + alias + ')' };
+                           for (k = 0; k < fld_json.length; k++) {
+                              alias = target.fields[j].alias ? target.fields[j].alias + ' ' + fld_json[k] : fld_json[k];
+                              if (_.isArray(fmt_json)) {
+                                 /* Format is a multi-value, so add each format as a separate field */
+                                 for (n = 0; n < fmt_json.length; n++) {
+                                    this.buildField(options, target, obj, target.fields[j], alias + '-' + fmt_json[n], fld_json[k], fmt_json[n], timefilter);
+                                 }
+                              } else {
+                                 this.buildField(options, target, obj, target.fields[j], alias, fld_json[k], fmt, timefilter);
                               }
-                              obj.fields[alias] = _.cloneDeep(field);
-                              obj.fields[alias].field = json[k];
                            }
                         } else {
-                           /* Field is a single value */
-                           alias = this.templateSrv.replace(alias, options.scopedVars);
-                           if (obj.fields[alias]) {
-                              throw { message: 'Duplicate field names defined (' + alias + ')' };
+                           alias = target.fields[j].alias ? target.fields[j].alias : field_name;
+                           if (_.isArray(fmt_json)) {
+                              /* Format is a multi-value, so add each format as a separate field */
+                              for (n = 0; n < fmt_json.length; n++) {
+                                 this.buildField(options, target, obj, target.fields[j], alias + '-' + fmt_json[n], field_name, fmt_json[n], timefilter);
+                              }
+                           } else {
+                              this.buildField(options, target, obj, target.fields[j], alias, field_name, fmt, timefilter);
                            }
-                           obj.fields[alias] = field;
                         }
                      }
 
@@ -389,19 +495,74 @@ System.register(['lodash'], function (_export, _context) {
                   };
                }
             }, {
+               key: 'getApiValue',
+               value: function getApiValue(value, field) {
+                  var val = value;
+
+                  if (field.grafana_format && (typeof value === 'undefined' ? 'undefined' : _typeof(value)) === 'object') {
+                     if (value && field.grafana_format in value) {
+                        val = value[field.grafana_format];
+                     } else {
+                        val = null;
+                     }
+                  }
+
+                  return val;
+               }
+            }, {
                key: 'processQueryResult',
                value: function processQueryResult(command, result) {
-                  var i;
+                  var i, cmd, res, row, key;
                   var output = { data: [] };
 
                   if (!result.data || !result.data.data || !result.data.data.objects) {
                      throw { message: 'Malformed API response' };
                   }
 
+                  for (i = 0; i < result.data.data.objects.length; i++) {
+                     cmd = command.objects[i];
+                     res = result.data.data.objects[i];
+                     if (cmd.group_by && cmd.group_by.length > 0 && res.data.length === 0) {
+                        /* Add a default aggregate row for no data */
+                        row = [];
+                        for (key in cmd.fields) {
+                           if (!cmd.fields.hasOwnProperty(key) || cmd.fields[key].hide) {
+                              continue;
+                           }
+
+                           row = {};
+                           switch (cmd.fields[key].aggregation_format) {
+                              case 'count':
+                              case 'count_all':
+                                 if (cmd.fields[key].grafana_format) {
+                                    row[key] = {};
+                                    row[key][cmd.fields[key].grafana_format] = 0;
+                                 } else {
+                                    row[key] = 0;
+                                 }
+                                 break;
+                              default:
+                                 if (cmd.fields[key].grafana_format) {
+                                    row[key] = {};
+                                    row[key][cmd.fields[key].grafana_format] = null;
+                                 } else {
+                                    row[key] = null;
+                                 }
+                                 break;
+                           }
+
+                           res.data.push(row);
+                           res.data_total = 1;
+                        }
+                     }
+                  }
+
                   /* Loop over each object */
                   for (i = 0; i < result.data.data.objects.length; i++) {
                      if (command.objects[i].grafana_output === 'timeseries') {
                         output.data = _.concat(output.data, this.processQueryResultTimeseries(command.objects[i], result.data.data.objects[i]));
+                     } else if (command.objects[i].grafana_output === 'ts_table') {
+                        output.data = _.concat(output.data, this.processQueryResultTableAsTimeseries(command.objects[i], result.data.data.objects[i]));
                      } else {
                         this.mergeTableResults(output.data, this.processQueryResultTable(command.objects[i], result.data.data.objects[i]));
                      }
@@ -441,6 +602,51 @@ System.register(['lodash'], function (_export, _context) {
                   }
                }
             }, {
+               key: 'processQueryResultTableAsTimeseries',
+               value: function processQueryResultTableAsTimeseries(cmdObj, resObj) {
+                  /* Pivot the results and aggregate against the provided 'time' field */
+                  var t, i, j, key, pivot_val, val, datapoints, index, tf;
+                  var result = [];
+                  var fields = [];
+
+                  if (!cmdObj.grafana_pivot_field) {
+                     throw { message: '"Time field" not provided' };
+                  }
+                  tf = cmdObj.fields[cmdObj.grafana_pivot_field].timefilter;
+
+                  /* Initialise result */
+                  for (key in cmdObj.fields) {
+                     if (!cmdObj.fields.hasOwnProperty(key) || key === cmdObj.grafana_pivot_field || cmdObj.fields[key].hide) {
+                        continue;
+                     }
+                     fields.push(key);
+                     datapoints = [];
+                     for (t = tf.grafana_start; t < tf.grafana_finish; t += tf.interval) {
+                        datapoints.push([null, t * 1000]);
+                     }
+                     result.push({ target: key, datapoints: datapoints });
+                  }
+
+                  /* Loop over the rows */
+                  for (i = 0; i < resObj.data.length; i++) {
+                     pivot_val = this.getApiValue(resObj.data[i][cmdObj.grafana_pivot_field], cmdObj.fields[cmdObj.grafana_pivot_field]);
+                     if (isNaN(pivot_val) || pivot_val < tf.grafana_start || pivot_val >= tf.grafana_finish) {
+                        /* Invalid value for pivot */
+                        continue;
+                     }
+                     index = Math.floor((pivot_val - tf.grafana_start) / tf.interval);
+
+                     for (j = 0; j < fields.length; j++) {
+                        val = this.getApiValue(resObj.data[i][fields[j]], cmdObj.fields[fields[j]]);
+                        if (!isNaN(val)) {
+                           result[j].datapoints[index][0] = val;
+                        }
+                     }
+                  }
+
+                  return result;
+               }
+            }, {
                key: 'processQueryResultTimeseries',
                value: function processQueryResultTimeseries(cmdObj, resObj) {
                   var i, j, time, key, subname, field, value, datapoints, rowData;
@@ -457,7 +663,7 @@ System.register(['lodash'], function (_export, _context) {
                            continue;
                         }
                         field = cmdObj.fields[key];
-                        value = resObj.data[i][key];
+                        value = this.getApiValue(resObj.data[i][key], field);
                         if (field.hide) {
                            continue;
                         }
@@ -465,10 +671,6 @@ System.register(['lodash'], function (_export, _context) {
                            /* Value is null */
                            result.push({ target: key, datapoints: [] });
                            continue;
-                        }
-
-                        if (field.grafana_format && (typeof value === 'undefined' ? 'undefined' : _typeof(value)) === 'object') {
-                           value = value[field.grafana_format];
                         }
 
                         datapoints = [];
@@ -531,15 +733,11 @@ System.register(['lodash'], function (_export, _context) {
                      /* Loop over each field (that isn't hidden) */
                      for (j = 0; j < result.columns.length; j++) {
                         field = cmdObj.fields[result.columns[j].text];
-                        value = resObj.data[i][result.columns[j].text];
+                        value = this.getApiValue(resObj.data[i][result.columns[j].text], field);
                         if (value === null) {
                            /* Value is null */
                            row.push(null);
                            continue;
-                        }
-
-                        if (field.grafana_format && (typeof value === 'undefined' ? 'undefined' : _typeof(value)) === 'object') {
-                           value = value[field.grafana_format];
                         }
 
                         if (!isNaN(value) || typeof value === 'string') {
@@ -575,7 +773,7 @@ System.register(['lodash'], function (_export, _context) {
                         }
                      }
 
-                     return '(' + output.join() + ')';
+                     return output.join();
                   } else if (!isNaN(value)) {
                      return value;
                   } else if (typeof value === 'string') {
