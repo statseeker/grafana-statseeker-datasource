@@ -4,7 +4,7 @@ This project provides a Statseeker datasource plugin for Grafana, allowing the u
 ## <a name="Prerequisites"></a>Prerequisites
 #### v1.1.0
 * A Statseeker v5.4.4, or later, server
-* A Grafana v4.3, or later, server (cannot be installed on the Statseeker server), see https://grafana.com/ for links to download packages and instructions on installation, and basic configuration of Grafana for your environment.
+* A Grafana v4.3 - v6.x , server (cannot be installed on the Statseeker server), see https://grafana.com/ for links to download packages and instructions on installation, and basic configuration of Grafana for your environment.
 #### v1.0.2
 * A Statseeker v5.2.x - v5.4.3 server
 * A Grafana v4.3 - v4.6.3 server (cannot be installed on the Statseeker server), see https://grafana.com/ for links to download packages and instructions on installation, and basic configuration of Grafana for your environment.
