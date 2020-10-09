@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",
-    "eslint": "^3.19.0",
+    "eslint": "^7.10.0",
     "grunt": "^1.0.1",
     "grunt-babel": "~6.0.0",
     "grunt-cli": "^1.2.0",
