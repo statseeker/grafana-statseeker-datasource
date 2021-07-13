@@ -3,7 +3,7 @@ This project provides a Statseeker datasource plugin for Grafana, allowing the u
 
 ## <a name="Prerequisites"></a>Prerequisites
 #### v1.1.0
-* A Statseeker v5.4.4, or later, server
+* A Statseeker v5.5.3, or later, server
 * A Grafana v4.3 - v6.x , server (cannot be installed on the Statseeker server), see https://grafana.com/ for links to download packages and instructions on installation, and basic configuration of Grafana for your environment.
 #### v1.0.2
 * A Statseeker v5.2.x - v5.4.3 server
@@ -11,7 +11,7 @@ This project provides a Statseeker datasource plugin for Grafana, allowing the u
 
 ## Installation
 * Download the correct version of the datasource (see [prerequisites](#Prerequisites)) from the [releases](https://github.com/statseeker/grafana-statseeker-datasource/releases) page.
-* Extract the package contents and copy [dist] folder to the Plugins directory on your Grafana server, typically: **/var/lib/grafana/plugins**
+* Extract the package contents and copy [dist] folder to the Plugins directory on your Grafana server, typically: **/var/lib/grafana/plugins** or in version 6.x **/usr/share/grafana/data/plugins**
 * Restart your Grafana server
 `# sudo service grafana-server restart`
 
