@@ -4,7 +4,8 @@ This project provides a Statseeker datasource plugin for Grafana, allowing the u
 ## <a name="Prerequisites"></a>Prerequisites
 #### v1.1.0
 * A Statseeker v5.5.3, or later, server
-* A Grafana v4.3 - v6.x , server (cannot be installed on the Statseeker server), see https://grafana.com/ for links to download packages and instructions on installation, and basic configuration of Grafana for your environment.
+* A Grafana v4.3 - v7.x , server (cannot be installed on the Statseeker server), see https://grafana.com/ for links to download packages and instructions on installation, and basic configuration of Grafana for your environment.
+* Note - Grafana 7.x will display a warning for unsigned plugins
 #### v1.0.2
 * A Statseeker v5.2.x - v5.4.3 server
 * A Grafana v4.3 - v4.6.3 server (cannot be installed on the Statseeker server), see https://grafana.com/ for links to download packages and instructions on installation, and basic configuration of Grafana for your environment.
@@ -50,6 +51,7 @@ Refer to [Statseeker's API documentation](https://docs.statseeker.com/restful-ap
 All timeseries data fields **must** have a format specified.
 * **Graph** panels will typically use `vals` or `cvals`
 * **Table** panels will typically use anything other than `vals` or `cvals`
+* The below list is some examples of the formats used, depending which version of Statseeker you use.
 
 | Formats Key              | Required Field Option  | Description                                                  |
 | ------------------------ | ---------------------- | ------------------------------------------------------------ |
