@@ -179,7 +179,7 @@ Field | Value
 Developed by Statseeker.
 
 ## Limited Support 
-This Statseeker Grafana Datasource is published with limited support, Techniche cannot guarantee that all functions will be available throughout the complete lifetime of the product. Techniche will do its best to solve upcoming problems but cannot give assurance. Support for these Statseeker Grafana Datasource features is provided on a no-obligation and best effort basis only. Techniche develops customized Statseeker Grafana dashboards for customers for a professional service fee, contact your account manager for more information.
+This Statseeker Grafana Datasource is published with limited support, Techniche cannot guarantee that all functions will be available throughout the complete lifetime of the product. Techniche will do its best to solve upcoming problems but cannot give assurance. Support for this Statseeker Grafana Datasource feature is provided on a no-obligation and best effort basis only.
 
 ## License
 Copyright (c) 2021 Statseeker
