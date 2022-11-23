@@ -8,7 +8,7 @@ This project provides a Statseeker datasource plugin for Grafana, allowing the u
 * Note 1 - Grafana 7.x will just display a warning for loading unsigned plugins
 * Note 2 - Grafana 8.x introduced a more stricter method in relation to signed plugins and by default does not allow unsigned plugins to load. To load our datasource, you will need to enable a configuration option called "allow_loading_unsigned_plugins" and define the Id of the plugin as statseeker-datasource. Documentation can be found in the the grafana website URL = https://grafana.com/docs/grafana/latest/administration/configuration/
 * Note 3 - Basic Authentication will need to be used as the primary authetication between the Statseeker server Restful API and Grafana for version of Statseeker prior to 5.5.5
-* Note 4 - Token based Authentication can be confiured and used if required in Statseeker version 5.5.5 and above. You will need to add a custom header called "Authorization" with a a value of Bearer + your API user token. This can be retrieved using browser DEV tools ( example inspect on Chrome ).
+* Note 4 - Token based Authentication can be confiured and used if required in Statseeker version 5.5.5 and above. You will need to add a custom header called "Authorization" with a a value of Bearer + your API user token. This can be retrieved using browser DEV tools ( example inspect on Chrome ). Please also review your user Athentication Refresh option to ensure your token does not expire if this is the authetication method used.  Only a user with administrator access can adjust the Authentication Refresh option for a user.
 * Example Value = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NjkwODA1NjksImlhdCI6MTY2OTA3Njk2O
 
 #### v1.0.2
